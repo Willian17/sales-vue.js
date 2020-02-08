@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <script src="js/vue.min.js"></script>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <title>Relatório de Vendas</title>
+</head>
+
+<body>
+
+    <div id="app">
+        <div class="container">
+            <h1 class="mt-3">Relatório De Vendas</h1>
+            <table class="mt-5 table" v-if="vendasPorProduto">
+                <thead>
+                    <tr>
+                        <th>ID</td>
+                        <th>Nome</td>
+                        <th>Total</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(venda , indice) in vendasPorProduto">
+                        <td>#{{indice + 1}}</td>
+                        <td>{{venda.name}}</td>
+                        <td v-dinheiro="'R$'">{{venda.value}}</td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td>+</td>
+                        <td>Total</td>
+                        <td v-dinheiro="'R$'" >{{totalVendas(vendasPorProduto)}}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    <script>
+        Vue.directive('dinheiro', {
+            inserted(elemento, parametro) {
+                const preco = parseFloat(elemento.innerHTML).toFixed(2)
+                    .replace('.', ',')
+                    .replace(/(\d)(?=(\d{3})+\,)/g, '$1.')
+
+                elemento.innerHTML = `${parametro.value} ${preco}`
+            }
+        })
+        new Vue({
+            el: "#app",
+            data: {
+                vendas: null
+            },
+            methods: {
+                getVendas() {
+                    fetch('/data/sales.json')
+                        .then(resp => resp.json())
+                        .then(dados => this.vendas = dados)
+                }, 
+                totalVendas(vendas){
+                    if(!vendas) return 0
+                    return vendas.reduce((total , venda) => total + venda.value , 0)
+                }
+            },
+            computed: {
+                vendasPorProduto(){
+                    if (!this.vendas) return null
+
+                    const vendasPorProduto = this.vendas.reduce((agrupado , venda)=>{
+                        if(!agrupado.hasOwnProperty(venda.name)){
+                            agrupado[venda.name] ={
+                                name: venda.name,
+                                value: venda.price * venda.qtde
+                            }
+                        return agrupado
+                        }
+                        agrupado[venda.name].value += venda.price * venda.qtde
+                        return agrupado
+
+                    } , {})
+                    return Object.values(vendasPorProduto)
+                }
+            },
+            mounted() {
+                this.getVendas()
+            }
+        })
+    </script>
+</body>
+
+</html>
